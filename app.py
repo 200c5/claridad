@@ -475,6 +475,8 @@ with tab4:
             if desc_g and monto_g > 0:
                 registrar_gasto(pyme_id, cats_g[cat_g]["id"], desc_g, monto_g, fecha_g.isoformat(), fijo_g)
                 st.success(f"✅ Guardado: {desc_g} — USD {monto_g:,.0f}")
+                st.cache_data.clear()
+                st.rerun()
             else:
                 st.error("Completá descripción y monto.")
 
@@ -491,6 +493,8 @@ with tab4:
             if desc_i and monto_i > 0:
                 registrar_ingreso(pyme_id, cats_i[cat_i]["id"], desc_i, monto_i, fecha_i.isoformat(), cliente_i)
                 st.success(f"✅ Guardado: {desc_i} — USD {monto_i:,.0f}")
+                st.cache_data.clear()
+                st.rerun()
             else:
                 st.error("Completá descripción y monto.")
 
