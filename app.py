@@ -131,7 +131,7 @@ semaforo_ico, semaforo_label, semaforo_msg = get_semaforo(resumen["margen_pct"])
 # ─────────────────────────────────────
 # TABS
 # ─────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "💡 Insights", "➕ Registrar", "📋 Historial", "📈 Evolución"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Dashboard", "💡 Insights", "🧮 Simulador", "➕ Registrar", "📋 Historial", "📈 Evolución"])
 
 # ══════════════════════════════════════
 # TAB 1 — DASHBOARD
@@ -320,9 +320,146 @@ with tab2:
         st.info("Cargá datos de al menos dos semanas para ver la comparación.")
 
 # ══════════════════════════════════════
-# TAB 3 — REGISTRAR
+# TAB 3 — SIMULADOR
 # ══════════════════════════════════════
 with tab3:
+    st.markdown("### 🧮 Simulador de decisiones")
+    st.caption("Probá escenarios antes de tomar una decisión. La app te dice en el momento cómo afecta tu ganancia.")
+    st.divider()
+
+    ingresos_base  = resumen["total_ingresos"]
+    gastos_base    = resumen["total_gastos"]
+    ganancia_base  = resumen["ganancia"]
+    margen_base    = resumen["margen_pct"]
+
+    sim = st.radio("¿Qué querés simular?", [
+        "📉 Aplicar un descuento en mis precios",
+        "📈 Subir mis precios",
+        "👷 Contratar un empleado nuevo",
+        "✂️ Reducir un gasto fijo",
+        "🎯 Cuánto tengo que vender para llegar a un margen objetivo",
+    ])
+
+    st.divider()
+
+    if ingresos_base == 0:
+        st.info("Cargá datos de ingresos y gastos primero para usar el simulador.")
+    else:
+
+        # ── SIMULADOR 1: Descuento ──
+        if sim == "📉 Aplicar un descuento en mis precios":
+            st.markdown("#### ¿Qué pasa si aplicás un descuento?")
+            col1, col2 = st.columns(2)
+            with col1:
+                descuento = st.slider("Descuento a aplicar (%)", 1, 50, 10)
+                clientes_extra = st.slider("¿Cuántos % más de clientes esperás atraer?", 0, 100, 0)
+            with col2:
+                ingresos_nuevo = ingresos_base * (1 - descuento/100) * (1 + clientes_extra/100)
+                ganancia_nuevo = ingresos_nuevo - gastos_base
+                margen_nuevo   = (ganancia_nuevo / ingresos_nuevo * 100) if ingresos_nuevo > 0 else 0
+                diferencia     = ganancia_nuevo - ganancia_base
+
+                st.metric("Ingresos estimados", f"USD {ingresos_nuevo:,.0f}", delta=f"USD {ingresos_nuevo - ingresos_base:+,.0f}")
+                st.metric("Ganancia estimada",  f"USD {ganancia_nuevo:,.0f}",  delta=f"USD {diferencia:+,.0f}")
+                st.metric("Margen estimado",    f"{margen_nuevo:.1f}%",        delta=f"{margen_nuevo - margen_base:+.1f}%")
+
+            if diferencia < 0:
+                st.error(f"❌ Con ese descuento **perdés USD {abs(diferencia):,.0f}** respecto a hoy. No conviene a menos que atraigas muchos más clientes.")
+            elif diferencia == 0:
+                st.warning("⚠️ Quedás igual que hoy. El descuento no te beneficia.")
+            else:
+                st.success(f"✅ Con ese descuento y el aumento de clientes estimado, **ganás USD {diferencia:,.0f} más**.")
+
+        # ── SIMULADOR 2: Subir precios ──
+        elif sim == "📈 Subir mis precios":
+            st.markdown("#### ¿Qué pasa si subís los precios?")
+            col1, col2 = st.columns(2)
+            with col1:
+                aumento = st.slider("Aumento de precios (%)", 1, 50, 10)
+                clientes_perdidos = st.slider("¿Cuántos % de clientes podrías perder?", 0, 50, 5)
+            with col2:
+                ingresos_nuevo = ingresos_base * (1 + aumento/100) * (1 - clientes_perdidos/100)
+                ganancia_nuevo = ingresos_nuevo - gastos_base
+                margen_nuevo   = (ganancia_nuevo / ingresos_nuevo * 100) if ingresos_nuevo > 0 else 0
+                diferencia     = ganancia_nuevo - ganancia_base
+
+                st.metric("Ingresos estimados", f"USD {ingresos_nuevo:,.0f}", delta=f"USD {ingresos_nuevo - ingresos_base:+,.0f}")
+                st.metric("Ganancia estimada",  f"USD {ganancia_nuevo:,.0f}",  delta=f"USD {diferencia:+,.0f}")
+                st.metric("Margen estimado",    f"{margen_nuevo:.1f}%",        delta=f"{margen_nuevo - margen_base:+.1f}%")
+
+            if diferencia > 0:
+                st.success(f"✅ Aun perdiendo {clientes_perdidos}% de clientes, **ganás USD {diferencia:,.0f} más** por mes. Subir el precio conviene.")
+            else:
+                st.error(f"❌ Perdés demasiados clientes. Con esa combinación **perdés USD {abs(diferencia):,.0f}**. Bajá el % de clientes perdidos o el aumento.")
+
+        # ── SIMULADOR 3: Contratar empleado ──
+        elif sim == "👷 Contratar un empleado nuevo":
+            st.markdown("#### ¿Cuánto tenés que vender más si contratás a alguien?")
+            col1, col2 = st.columns(2)
+            with col1:
+                sueldo = st.number_input("Sueldo mensual del empleado (USD)", min_value=100.0, step=50.0, value=800.0)
+                ventas_extra = st.slider("¿Cuánto % más vendés gracias a ese empleado?", 0, 100, 20)
+            with col2:
+                gastos_nuevo   = gastos_base + sueldo
+                ingresos_nuevo = ingresos_base * (1 + ventas_extra/100)
+                ganancia_nuevo = ingresos_nuevo - gastos_nuevo
+                margen_nuevo   = (ganancia_nuevo / ingresos_nuevo * 100) if ingresos_nuevo > 0 else 0
+                diferencia     = ganancia_nuevo - ganancia_base
+
+                ventas_necesarias = gastos_nuevo / (1 - (gastos_base / ingresos_base)) if ingresos_base > 0 else 0
+
+                st.metric("Ingresos estimados", f"USD {ingresos_nuevo:,.0f}", delta=f"USD {ingresos_nuevo - ingresos_base:+,.0f}")
+                st.metric("Ganancia estimada",  f"USD {ganancia_nuevo:,.0f}",  delta=f"USD {diferencia:+,.0f}")
+                st.metric("Ventas mínimas necesarias", f"USD {ventas_necesarias:,.0f}")
+
+            if diferencia > 0:
+                st.success(f"✅ Con ese empleado generando {ventas_extra}% más de ventas, **ganás USD {diferencia:,.0f} más** por mes.")
+            else:
+                st.error(f"❌ El empleado cuesta más de lo que genera. Necesitás que produzca al menos **USD {ventas_necesarias:,.0f}** en ventas para que valga la pena.")
+
+        # ── SIMULADOR 4: Reducir gasto fijo ──
+        elif sim == "✂️ Reducir un gasto fijo":
+            st.markdown("#### ¿Cuánto mejora tu margen si reducís un gasto?")
+            col1, col2 = st.columns(2)
+            with col1:
+                nombre_gasto = st.text_input("¿Qué gasto querés reducir?", placeholder="Ej: Alquiler, servicios")
+                reduccion    = st.number_input("¿Cuánto USD por mes ahorrarías?", min_value=0.0, step=50.0, value=200.0)
+            with col2:
+                gastos_nuevo   = gastos_base - reduccion
+                ganancia_nuevo = ingresos_base - gastos_nuevo
+                margen_nuevo   = (ganancia_nuevo / ingresos_base * 100) if ingresos_base > 0 else 0
+
+                st.metric("Gastos estimados",  f"USD {gastos_nuevo:,.0f}",  delta=f"USD {-reduccion:+,.0f}", delta_color="inverse")
+                st.metric("Ganancia estimada", f"USD {ganancia_nuevo:,.0f}", delta=f"USD {reduccion:+,.0f}")
+                st.metric("Margen estimado",   f"{margen_nuevo:.1f}%",       delta=f"{margen_nuevo - margen_base:+.1f}%")
+
+            if reduccion > 0:
+                st.success(f"✅ Reduciendo **{nombre_gasto or 'ese gasto'}** en USD {reduccion:,.0f}/mes, tu margen pasa de {margen_base:.1f}% a {margen_nuevo:.1f}%.")
+
+        # ── SIMULADOR 5: Meta de margen ──
+        elif sim == "🎯 Cuánto tengo que vender para llegar a un margen objetivo":
+            st.markdown("#### ¿Cuánto tenés que vender para llegar a tu meta?")
+            col1, col2 = st.columns(2)
+            with col1:
+                margen_objetivo = st.slider("Margen objetivo (%)", 5, 70, 30)
+            with col2:
+                costo_variable_pct = (gastos_base - resumen["gastos_fijos"]) / ingresos_base if ingresos_base > 0 else 0.5
+                ventas_necesarias  = resumen["gastos_fijos"] / (margen_objetivo/100) if margen_objetivo > 0 else 0
+                diferencia_ventas  = ventas_necesarias - ingresos_base
+
+                st.metric("Ventas actuales",    f"USD {ingresos_base:,.0f}")
+                st.metric("Ventas necesarias",  f"USD {ventas_necesarias:,.0f}", delta=f"USD {diferencia_ventas:+,.0f}")
+                st.metric("Margen actual",      f"{margen_base:.1f}%")
+
+            if diferencia_ventas > 0:
+                st.warning(f"Para llegar al **{margen_objetivo}% de margen**, necesitás vender **USD {diferencia_ventas:,.0f} más** por mes — un aumento del {diferencia_ventas/ingresos_base*100:.0f}%.")
+            else:
+                st.success(f"✅ Ya estás superando el margen objetivo de {margen_objetivo}%. Tu margen actual es {margen_base:.1f}%.")
+
+# ══════════════════════════════════════
+# TAB 4 — REGISTRAR
+# ══════════════════════════════════════
+with tab4:
     col_gasto, col_ingreso = st.columns(2)
 
     with col_gasto:
@@ -358,9 +495,9 @@ with tab3:
                 st.error("Completá descripción y monto.")
 
 # ══════════════════════════════════════
-# TAB 4 — HISTORIAL
+# TAB 5 — HISTORIAL
 # ══════════════════════════════════════
-with tab4:
+with tab5:
     st.markdown("#### 📋 Historial")
     sg, si = st.tabs(["Gastos", "Ingresos"])
     with sg:
@@ -382,9 +519,9 @@ with tab4:
             st.info("Sin ingresos en este período.")
 
 # ══════════════════════════════════════
-# TAB 5 — EVOLUCIÓN
+# TAB 6 — EVOLUCIÓN
 # ══════════════════════════════════════
-with tab5:
+with tab6:
     st.markdown("#### 📈 Evolución de los últimos 6 meses")
     if evolucion:
         df_ev = pd.DataFrame(evolucion)
