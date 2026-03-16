@@ -1,70 +1,69 @@
 """
-Claridad — Base de datos (Supabase / PostgreSQL)
+Claridad — Base de datos
+Usa SQLite localmente y en Streamlit Cloud hasta configurar Supabase.
 """
 
-import os
-import psycopg2
-import psycopg2.extras
+import sqlite3
 from datetime import date, timedelta
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DB_PATH = "claridad.db"
 
 def get_conn():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """Crea las tablas si no existen."""
     conn = get_conn()
     c = conn.cursor()
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS pymes (
-            id         SERIAL PRIMARY KEY,
-            nombre     TEXT NOT NULL,
-            rubro      TEXT,
-            moneda     TEXT DEFAULT 'USD',
-            creado_en  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre    TEXT NOT NULL,
+            rubro     TEXT,
+            moneda    TEXT DEFAULT 'USD',
+            creado_en TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS categorias (
-            id     SERIAL PRIMARY KEY,
+            id     INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             tipo   TEXT NOT NULL
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS gastos (
-            id           SERIAL PRIMARY KEY,
-            pyme_id      INTEGER NOT NULL REFERENCES pymes(id),
-            categoria_id INTEGER REFERENCES categorias(id),
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            pyme_id      INTEGER NOT NULL,
+            categoria_id INTEGER,
             descripcion  TEXT,
             monto        REAL NOT NULL,
             fecha        TEXT NOT NULL,
             es_fijo      INTEGER DEFAULT 0,
             notas        TEXT,
-            creado_en    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            creado_en    TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pyme_id) REFERENCES pymes(id),
+            FOREIGN KEY (categoria_id) REFERENCES categorias(id)
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS ingresos (
-            id           SERIAL PRIMARY KEY,
-            pyme_id      INTEGER NOT NULL REFERENCES pymes(id),
-            categoria_id INTEGER REFERENCES categorias(id),
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            pyme_id      INTEGER NOT NULL,
+            categoria_id INTEGER,
             descripcion  TEXT,
             monto        REAL NOT NULL,
             fecha        TEXT NOT NULL,
             cliente      TEXT,
             notas        TEXT,
-            creado_en    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            creado_en    TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pyme_id) REFERENCES pymes(id),
+            FOREIGN KEY (categoria_id) REFERENCES categorias(id)
         )
     """)
 
-    # Categorías por defecto
     c.execute("SELECT COUNT(*) FROM categorias")
     if c.fetchone()[0] == 0:
         categorias = [
@@ -82,42 +81,33 @@ def init_db():
             ("Cobro de factura", "ingreso"),
             ("Otros ingresos", "ingreso"),
         ]
-        c.executemany("INSERT INTO categorias (nombre, tipo) VALUES (%s, %s)", categorias)
+        c.executemany("INSERT INTO categorias (nombre, tipo) VALUES (?, ?)", categorias)
 
     conn.commit()
     conn.close()
 
 def get_pymes():
     conn = get_conn()
-    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT * FROM pymes ORDER BY nombre")
-    rows = c.fetchall()
+    rows = conn.execute("SELECT * FROM pymes ORDER BY nombre").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
-def crear_pyme(nombre, rubro, moneda="USD", retornar_id=False):
+def crear_pyme(nombre, rubro, moneda="USD"):
     conn = get_conn()
-    c = conn.cursor()
-    c.execute("INSERT INTO pymes (nombre, rubro, moneda) VALUES (%s, %s, %s) RETURNING id", (nombre, rubro, moneda))
-    pyme_id = c.fetchone()[0]
+    conn.execute("INSERT INTO pymes (nombre, rubro, moneda) VALUES (?, ?, ?)", (nombre, rubro, moneda))
     conn.commit()
     conn.close()
-    if retornar_id:
-        return pyme_id
 
 def get_categorias(tipo):
     conn = get_conn()
-    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT * FROM categorias WHERE tipo = %s ORDER BY nombre", (tipo,))
-    rows = c.fetchall()
+    rows = conn.execute("SELECT * FROM categorias WHERE tipo=? ORDER BY nombre", (tipo,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 def registrar_gasto(pyme_id, categoria_id, descripcion, monto, fecha, es_fijo=False, notas=""):
     conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO gastos (pyme_id, categoria_id, descripcion, monto, fecha, es_fijo, notas) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+    conn.execute(
+        "INSERT INTO gastos (pyme_id, categoria_id, descripcion, monto, fecha, es_fijo, notas) VALUES (?,?,?,?,?,?,?)",
         (pyme_id, categoria_id, descripcion, monto, fecha, int(es_fijo), notas)
     )
     conn.commit()
@@ -125,9 +115,8 @@ def registrar_gasto(pyme_id, categoria_id, descripcion, monto, fecha, es_fijo=Fa
 
 def registrar_ingreso(pyme_id, categoria_id, descripcion, monto, fecha, cliente="", notas=""):
     conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO ingresos (pyme_id, categoria_id, descripcion, monto, fecha, cliente, notas) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+    conn.execute(
+        "INSERT INTO ingresos (pyme_id, categoria_id, descripcion, monto, fecha, cliente, notas) VALUES (?,?,?,?,?,?,?)",
         (pyme_id, categoria_id, descripcion, monto, fecha, cliente, notas)
     )
     conn.commit()
@@ -135,43 +124,37 @@ def registrar_ingreso(pyme_id, categoria_id, descripcion, monto, fecha, cliente=
 
 def get_gastos(pyme_id, desde, hasta):
     conn = get_conn()
-    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("""
-        SELECT g.*, cat.nombre as categoria_nombre
+    rows = conn.execute("""
+        SELECT g.*, c.nombre as categoria_nombre
         FROM gastos g
-        LEFT JOIN categorias cat ON g.categoria_id = cat.id
-        WHERE g.pyme_id = %s AND g.fecha BETWEEN %s AND %s
+        LEFT JOIN categorias c ON g.categoria_id = c.id
+        WHERE g.pyme_id=? AND g.fecha BETWEEN ? AND ?
         ORDER BY g.fecha DESC
-    """, (pyme_id, desde, hasta))
-    rows = c.fetchall()
+    """, (pyme_id, desde, hasta)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 def get_ingresos(pyme_id, desde, hasta):
     conn = get_conn()
-    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("""
-        SELECT i.*, cat.nombre as categoria_nombre
+    rows = conn.execute("""
+        SELECT i.*, c.nombre as categoria_nombre
         FROM ingresos i
-        LEFT JOIN categorias cat ON i.categoria_id = cat.id
-        WHERE i.pyme_id = %s AND i.fecha BETWEEN %s AND %s
+        LEFT JOIN categorias c ON i.categoria_id = c.id
+        WHERE i.pyme_id=? AND i.fecha BETWEEN ? AND ?
         ORDER BY i.fecha DESC
-    """, (pyme_id, desde, hasta))
-    rows = c.fetchall()
+    """, (pyme_id, desde, hasta)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 def eliminar_gasto(gasto_id):
     conn = get_conn()
-    c = conn.cursor()
-    c.execute("DELETE FROM gastos WHERE id = %s", (gasto_id,))
+    conn.execute("DELETE FROM gastos WHERE id=?", (gasto_id,))
     conn.commit()
     conn.close()
 
 def eliminar_ingreso(ingreso_id):
     conn = get_conn()
-    c = conn.cursor()
-    c.execute("DELETE FROM ingresos WHERE id = %s", (ingreso_id,))
+    conn.execute("DELETE FROM ingresos WHERE id=?", (ingreso_id,))
     conn.commit()
     conn.close()
 
@@ -179,23 +162,28 @@ def get_resumen(pyme_id, desde, hasta):
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("SELECT COALESCE(SUM(monto),0) FROM ingresos WHERE pyme_id=%s AND fecha BETWEEN %s AND %s", (pyme_id, desde, hasta))
-    total_ingresos = c.fetchone()[0]
+    total_ingresos = c.execute(
+        "SELECT COALESCE(SUM(monto),0) FROM ingresos WHERE pyme_id=? AND fecha BETWEEN ? AND ?",
+        (pyme_id, desde, hasta)
+    ).fetchone()[0]
 
-    c.execute("SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=%s AND fecha BETWEEN %s AND %s", (pyme_id, desde, hasta))
-    total_gastos = c.fetchone()[0]
+    total_gastos = c.execute(
+        "SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=? AND fecha BETWEEN ? AND ?",
+        (pyme_id, desde, hasta)
+    ).fetchone()[0]
 
-    c.execute("SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=%s AND fecha BETWEEN %s AND %s AND es_fijo=1", (pyme_id, desde, hasta))
-    gastos_fijos = c.fetchone()[0]
+    gastos_fijos = c.execute(
+        "SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=? AND fecha BETWEEN ? AND ? AND es_fijo=1",
+        (pyme_id, desde, hasta)
+    ).fetchone()[0]
 
-    c.execute("""
-        SELECT cat.nombre, SUM(g.monto) as total
+    gastos_por_cat = c.execute("""
+        SELECT c.nombre, SUM(g.monto) as total
         FROM gastos g
-        LEFT JOIN categorias cat ON g.categoria_id = cat.id
-        WHERE g.pyme_id = %s AND g.fecha BETWEEN %s AND %s
-        GROUP BY cat.nombre ORDER BY total DESC
-    """, (pyme_id, desde, hasta))
-    gastos_por_cat = [{"nombre": r[0], "total": r[1]} for r in c.fetchall()]
+        LEFT JOIN categorias c ON g.categoria_id = c.id
+        WHERE g.pyme_id=? AND g.fecha BETWEEN ? AND ?
+        GROUP BY c.nombre ORDER BY total DESC
+    """, (pyme_id, desde, hasta)).fetchall()
 
     conn.close()
 
@@ -209,7 +197,7 @@ def get_resumen(pyme_id, desde, hasta):
         "gastos_variables": round(float(total_gastos - gastos_fijos), 2),
         "ganancia":         round(float(ganancia), 2),
         "margen_pct":       round(float(margen), 1),
-        "gastos_por_cat":   gastos_por_cat,
+        "gastos_por_cat":   [{"nombre": r[0], "total": r[1]} for r in gastos_por_cat],
     }
 
 def get_evolucion_mensual(pyme_id, meses=6):
@@ -228,17 +216,21 @@ def get_evolucion_mensual(pyme_id, meses=6):
         desde = primer_dia.isoformat()
         hasta = ultimo_dia.isoformat()
 
-        c.execute("SELECT COALESCE(SUM(monto),0) FROM ingresos WHERE pyme_id=%s AND fecha BETWEEN %s AND %s", (pyme_id, desde, hasta))
-        ing = float(c.fetchone()[0])
+        ing = c.execute(
+            "SELECT COALESCE(SUM(monto),0) FROM ingresos WHERE pyme_id=? AND fecha BETWEEN ? AND ?",
+            (pyme_id, desde, hasta)
+        ).fetchone()[0]
 
-        c.execute("SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=%s AND fecha BETWEEN %s AND %s", (pyme_id, desde, hasta))
-        gas = float(c.fetchone()[0])
+        gas = c.execute(
+            "SELECT COALESCE(SUM(monto),0) FROM gastos WHERE pyme_id=? AND fecha BETWEEN ? AND ?",
+            (pyme_id, desde, hasta)
+        ).fetchone()[0]
 
         resultados.append({
             "mes":      primer_dia.strftime("%b %Y"),
-            "ingresos": round(ing, 2),
-            "gastos":   round(gas, 2),
-            "ganancia": round(ing - gas, 2),
+            "ingresos": round(float(ing), 2),
+            "gastos":   round(float(gas), 2),
+            "ganancia": round(float(ing - gas), 2),
         })
 
     conn.close()
