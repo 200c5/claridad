@@ -1,4 +1,1 @@
-streamlit
-pandas
-plotly
-psycopg2-binary
+Fix the attached problems
