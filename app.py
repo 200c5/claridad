@@ -9,7 +9,8 @@ from db import (
 )
 from auth import (
     init_auth_tables, registrar_usuario, login_usuario,
-    get_pymes_usuario, crear_pyme_usuario
+    get_pymes_usuario, crear_pyme_usuario,
+    get_todos_usuarios, get_stats_usuario
 )
 
 st.set_page_config(page_title="Claridad", page_icon="💚", layout="wide")
@@ -203,10 +204,20 @@ margen_base   = resumen["margen_pct"]
 # ─────────────────────────────────────
 # TABS
 # ─────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-    "➕ Registrar", "📋 Historial", "📈 Evolución"
-])
+ADMIN_EMAIL = "clara2005perdomo@gmail.com"
+es_admin = usuario["email"] == ADMIN_EMAIL
+
+if es_admin:
+    tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+        "📊 Dashboard", "💡 Insights", "🧮 Simulador",
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "⚙️ Admin"
+    ])
+else:
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📊 Dashboard", "💡 Insights", "🧮 Simulador",
+        "➕ Registrar", "📋 Historial", "📈 Evolución"
+    ])
+    tab_admin = None
 
 # ══════════════════════════════════════
 # TAB 1 — DASHBOARD
@@ -560,3 +571,47 @@ with tab6:
         st.plotly_chart(fig)
     else:
         st.info("Cargá datos para ver la evolución.")
+
+# ══════════════════════════════════════
+# TAB ADMIN — solo visible para el admin
+# ══════════════════════════════════════
+if es_admin and tab_admin:
+    with tab_admin:
+        st.markdown("### ⚙️ Panel de administrador")
+        st.caption("Solo visible para vos.")
+        st.divider()
+
+        usuarios = get_todos_usuarios()
+        total = len(usuarios)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("👥 Usuarios registrados", total)
+        with col2:
+            st.metric("🎯 Meta", "5 usuarios activos")
+
+        st.divider()
+        st.markdown("#### Usuarios registrados")
+
+        for u in usuarios:
+            stats = get_stats_usuario(u["id"])
+            activo = stats["gastos"] > 0 or stats["ingresos"] > 0
+            with st.expander(f"{'🟢' if activo else '⚪'} {u['nombre']} — {u['email']}"):
+                col_a, col_b, col_c, col_d = st.columns(4)
+                with col_a:
+                    st.metric("Empresas", stats["pymes"])
+                with col_b:
+                    st.metric("Gastos cargados", stats["gastos"])
+                with col_c:
+                    st.metric("Ingresos cargados", stats["ingresos"])
+                with col_d:
+                    st.metric("Estado", "Activo" if activo else "Sin datos")
+                st.caption(f"Registrado: {u['creado_en']}")
+
+        st.divider()
+        st.markdown("#### ¿Cuándo cobrar?")
+        activos = sum(1 for u in usuarios if get_stats_usuario(u["id"])["gastos"] > 0 or get_stats_usuario(u["id"])["ingresos"] > 0)
+        if activos >= 3:
+            st.success(f"✅ Tenés {activos} usuarios activos. Es momento de ofrecer el plan pago.")
+        else:
+            st.info(f"Tenés {activos} usuarios activos. Cuando llegues a 3, ofrecé el plan pago.")
