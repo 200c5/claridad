@@ -92,3 +92,26 @@ def crear_pyme_usuario(usuario_id, nombre, rubro, moneda="USD"):
     conn.commit()
     conn.close()
     return pyme_id
+def get_todos_usuarios():
+    conn = get_conn()
+    if USE_POSTGRES:
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    else:
+        c = conn.cursor()
+    c.execute("SELECT id, email, nombre, creado_en FROM usuarios ORDER BY creado_en DESC")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_stats_usuario(usuario_id):
+    conn = get_conn()
+    p = ph()
+    c = conn.cursor()
+    c.execute(f"SELECT COUNT(*) FROM pymes p JOIN usuario_pyme up ON p.id = up.pyme_id WHERE up.usuario_id={p}", (usuario_id,))
+    pymes = c.fetchone()[0]
+    c.execute(f"SELECT COUNT(*) FROM gastos g JOIN pymes p ON g.pyme_id = p.id JOIN usuario_pyme up ON p.id = up.pyme_id WHERE up.usuario_id={p}", (usuario_id,))
+    gastos = c.fetchone()[0]
+    c.execute(f"SELECT COUNT(*) FROM ingresos i JOIN pymes p ON i.pyme_id = p.id JOIN usuario_pyme up ON p.id = up.pyme_id WHERE up.usuario_id={p}", (usuario_id,))
+    ingresos = c.fetchone()[0]
+    conn.close()
+    return {"pymes": pymes, "gastos": gastos, "ingresos": ingresos}
