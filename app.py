@@ -20,6 +20,58 @@ from db import init_db
 init_db()
 init_auth_tables()
 
+# CSS personalizado
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+.stDeployButton {display: none;}
+.stApp {background-color: #f8fafb;}
+.stButton > button {
+    background-color: #1D9E75 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    padding: 10px 20px !important;
+}
+.stButton > button:hover {
+    background-color: #0F6E56 !important;
+    color: white !important;
+}
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e8f5f0 !important;
+}
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #f0fdf4 !important;
+    border-radius: 10px !important;
+    padding: 4px !important;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1D9E75 !important;
+    color: white !important;
+}
+[data-testid="metric-container"] {
+    background-color: white !important;
+    border: 1px solid #e8f5f0 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+.stTextInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Inicializar tablas
+from db import init_db
+init_db()
+init_auth_tables()
+
 # ─────────────────────────────────────
 # SESIÓN
 # ─────────────────────────────────────
