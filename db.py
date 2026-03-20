@@ -1,6 +1,8 @@
 import sqlite3
 from datetime import date, timedelta
 DB_PATH = "claridad.db"
+def ph():
+    return "?"
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
