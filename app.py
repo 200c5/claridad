@@ -1,6 +1,4 @@
-from reporte import generar_informe_pdf
 import streamlit as st
-from benchmark import analizar_vs_sector, get_rubros_disponibles, BENCHMARKS
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -42,7 +40,7 @@ def pantalla_auth():
     col_esp1, col_form, col_esp2 = st.columns([1, 2, 1])
 
     with col_form:
-        modo = st.radio("Modo", ["Iniciar sesión", "Crear cuenta"], label_visibility="collapsed", horizontal=True, label_visibility="collapsed")
+        modo = st.radio("", ["Iniciar sesión", "Crear cuenta"], horizontal=True, label_visibility="collapsed")
         st.divider()
 
         if modo == "Iniciar sesión":
@@ -573,24 +571,7 @@ with tab6:
         st.plotly_chart(fig)
     else:
         st.info("Cargá datos para ver la evolución.")
-st.divider()
-    st.markdown("#### 📄 Descargar informe PDF")
-    if st.button("📥 Generar informe del período", use_container_width=True):
-        pdf_bytes = generar_informe_pdf(
-            pyme_nombre=pyme["nombre"],
-            pyme_rubro=pyme.get("rubro", ""),
-            periodo=f"{desde_str} al {hasta_str}",
-            resumen=resumen,
-            gastos=gastos,
-            ingresos=ingresos
-        )
-        st.download_button(
-            label="⬇️ Descargar PDF",
-            data=pdf_bytes,
-            file_name=f"informe_{pyme['nombre']}_{desde_str}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
+
 # ══════════════════════════════════════
 # TAB ADMIN — solo visible para el admin
 # ══════════════════════════════════════
