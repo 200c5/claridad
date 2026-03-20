@@ -20,6 +20,90 @@ from db import init_db
 init_db()
 init_auth_tables()
 
+# CSS personalizado
+st.markdown("""
+<style>
+/* Ocultar barra de Streamlit */
+footer {visibility: hidden;}
+.stDeployButton {display: none;}
+
+/* Fondo general */
+
+/* Botones principales — verde en lugar de rojo */
+.stButton > button {
+    background-color: #1D9E75 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    padding: 10px 20px !important;
+    transition: background-color 0.2s !important;
+}
+.stButton > button:hover {
+    background-color: #0F6E56 !important;
+    color: white !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e8f5f0 !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #f0fdf4 !important;
+    border-radius: 10px !important;
+    padding: 4px !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1D9E75 !important;
+    color: white !important;
+}
+
+/* Métricas */
+[data-testid="metric-container"] {
+    background-color: white !important;
+    border: 1px solid #e8f5f0 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+/* Inputs */
+.stTextInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+.stNumberInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+
+/* Selectbox */
+.stSelectbox > div > div {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+
+/* Dataframes */
+[data-testid="stDataFrame"] {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    background-color: #f0fdf4 !important;
+    border-radius: 8px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ─────────────────────────────────────
 # SESIÓN
 # ─────────────────────────────────────
@@ -208,14 +292,14 @@ ADMIN_EMAIL = "clara2005perdomo@gmail.com"
 es_admin = usuario["email"] == ADMIN_EMAIL
 
 if es_admin:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_admin = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución", "⚙️ Admin"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "🏆 Benchmark", "⚙️ Admin"
     ])
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "🏆 Benchmark"
     ])
     tab_admin = None
 
@@ -495,12 +579,14 @@ with tab4:
         st.markdown("#### 💸 Nuevo gasto")
         cats_g    = get_categorias("gasto")
         nombres_g = [c["nombre"] for c in cats_g]
-        desc_g    = st.text_input("Descripción", key="desc_g", placeholder="Ej: Compra materiales")
-        monto_g   = st.number_input("Monto USD", min_value=0.0, step=1.0, key="monto_g")
-        fecha_g   = st.date_input("Fecha", value=hoy, key="fecha_g")
-        cat_g     = st.selectbox("Categoría", range(len(nombres_g)), format_func=lambda i: nombres_g[i], key="cat_g")
-        fijo_g    = st.checkbox("¿Gasto fijo?", key="fijo_g")
-        if st.button("✅ Guardar gasto", use_container_width=True):
+        with st.form("form_gasto", clear_on_submit=True):
+            desc_g    = st.text_input("Descripción *", placeholder="Ej: Compra materiales")
+            monto_g   = st.number_input("Monto USD *", min_value=0.0, step=1.0)
+            fecha_g   = st.date_input("Fecha", value=hoy)
+            cat_g     = st.selectbox("Categoría", range(len(nombres_g)), format_func=lambda i: nombres_g[i])
+            fijo_g    = st.checkbox("¿Gasto fijo?")
+            submitted_g = st.form_submit_button("✅ Guardar gasto", use_container_width=True)
+        if submitted_g:
             if desc_g and monto_g > 0:
                 registrar_gasto(pyme_id, cats_g[cat_g]["id"], desc_g, monto_g, fecha_g.isoformat(), fijo_g)
                 st.success(f"✅ Guardado: {desc_g} — USD {monto_g:,.0f}")
@@ -513,12 +599,14 @@ with tab4:
         st.markdown("#### 💰 Nuevo ingreso")
         cats_i    = get_categorias("ingreso")
         nombres_i = [c["nombre"] for c in cats_i]
-        desc_i    = st.text_input("Descripción", key="desc_i", placeholder="Ej: Venta del día")
-        monto_i   = st.number_input("Monto USD", min_value=0.0, step=1.0, key="monto_i")
-        fecha_i   = st.date_input("Fecha", value=hoy, key="fecha_i")
-        cliente_i = st.text_input("Cliente (importante para análisis)", key="cliente_i")
-        cat_i     = st.selectbox("Categoría", range(len(nombres_i)), format_func=lambda i: nombres_i[i], key="cat_i")
-        if st.button("✅ Guardar ingreso", use_container_width=True):
+        with st.form("form_ingreso", clear_on_submit=True):
+            desc_i    = st.text_input("Descripción *", placeholder="Ej: Venta del día")
+            monto_i   = st.number_input("Monto USD *", min_value=0.0, step=1.0)
+            fecha_i   = st.date_input("Fecha", value=hoy)
+            cliente_i = st.text_input("Cliente (importante para análisis)")
+            cat_i     = st.selectbox("Categoría", range(len(nombres_i)), format_func=lambda i: nombres_i[i])
+            submitted_i = st.form_submit_button("✅ Guardar ingreso", use_container_width=True)
+        if submitted_i:
             if desc_i and monto_i > 0:
                 registrar_ingreso(pyme_id, cats_i[cat_i]["id"], desc_i, monto_i, fecha_i.isoformat(), cliente_i)
                 st.success(f"✅ Guardado: {desc_i} — USD {monto_i:,.0f}")
@@ -571,6 +659,94 @@ with tab6:
         st.plotly_chart(fig)
     else:
         st.info("Cargá datos para ver la evolución.")
+
+# ══════════════════════════════════════
+# TAB 7 — BENCHMARK DEL SECTOR
+# ══════════════════════════════════════
+with tab7:
+    st.markdown("### 🏆 Tu negocio vs el sector")
+    st.caption("Compará tu margen con el promedio de negocios similares en la región.")
+    st.divider()
+
+    rubros = get_rubros_disponibles()
+    rubro_sel = st.selectbox(
+        "¿Cuál es el rubro de tu negocio?",
+        rubros,
+        index=rubros.index("Otros") if "Otros" in rubros else 0
+    )
+
+    if resumen["total_ingresos"] > 0:
+        analisis = analizar_vs_sector(resumen["margen_pct"], rubro_sel)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Tu margen actual", f"{analisis['margen_actual']}%")
+        with col2:
+            st.metric("Promedio del sector", f"{analisis['margen_promedio']}%")
+        with col3:
+            diferencia = analisis["diferencia"]
+            st.metric(
+                "Diferencia",
+                f"{abs(diferencia):.1f} pts",
+                delta=f"{'por encima' if diferencia >= 0 else 'por debajo'}",
+                delta_color="normal" if diferencia >= 0 else "inverse"
+            )
+
+        st.divider()
+
+        # Mensaje principal
+        if analisis["color"] == "success":
+            st.success(f"{analisis['emoji']} **{analisis['comparacion']}**")
+        elif analisis["color"] == "warning":
+            st.warning(f"{analisis['emoji']} **{analisis['comparacion']}**")
+        else:
+            st.error(f"{analisis['emoji']} **{analisis['comparacion']}**")
+
+        st.info(f"💡 {analisis['mensaje']}")
+
+        st.divider()
+
+        # Gráfico de barras comparativo
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_bar(
+            x=["Tu negocio", "Mínimo sector", "Promedio sector", "Margen ideal"],
+            y=[analisis["margen_actual"], analisis["margen_minimo"],
+               analisis["margen_promedio"], analisis["margen_bueno"]],
+            marker_color=["#1D9E75" if analisis["margen_actual"] >= analisis["margen_promedio"] else "#E24B4A",
+                         "#CCCCCC", "#7F77DD", "#1D9E75"],
+            text=[f"{v:.1f}%" for v in [analisis["margen_actual"], analisis["margen_minimo"],
+                                         analisis["margen_promedio"], analisis["margen_bueno"]]],
+            textposition="outside"
+        )
+        fig.update_layout(
+            title=f"Comparación de margen neto — {rubro_sel}",
+            height=350, showlegend=False,
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(title="Margen neto (%)", ticksuffix="%"),
+            margin=dict(t=40, b=20)
+        )
+        st.plotly_chart(fig)
+
+        # Tabla con todos los rubros
+        st.divider()
+        st.markdown("#### Márgenes promedio por sector")
+        bench_data = []
+        for rubro_key, datos in BENCHMARKS.items():
+            bench_data.append({
+                "Sector": rubro_key,
+                "Mínimo": f"{datos['margen_neto_min']}%",
+                "Promedio": f"{datos['margen_neto_promedio']}%",
+                "Bueno": f"{datos['margen_neto_bueno']}%+",
+                "Descripción": datos["descripcion"]
+            })
+        import pandas as pd
+        df_bench = pd.DataFrame(bench_data)
+        st.dataframe(df_bench, hide_index=True)
+        st.caption(f"Fuente: {analisis['fuente']}")
+
+    else:
+        st.info("Cargá datos de ingresos y gastos para ver tu benchmark del sector.")
 
 # ══════════════════════════════════════
 # TAB ADMIN — solo visible para el admin
