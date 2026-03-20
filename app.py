@@ -1,4 +1,5 @@
-from reporte import generar_informe_pdfimport streamlit as st
+from reporte import generar_informe_pdf
+import streamlit as st
 from benchmark import analizar_vs_sector, get_rubros_disponibles, BENCHMARKS
 import pandas as pd
 import plotly.express as px
