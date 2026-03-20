@@ -58,6 +58,25 @@ def login_usuario(email, password):
         c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     else:
         c = conn.cursor()
+    c.execute(
+        f"SELECT id, nombre, email, activo, aprobado FROM usuarios WHERE email={p} AND password={p}",
+        (email.lower().strip(), hash_password(password))
+    )
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return False, "Email o contraseña incorrectos."
+    r = dict(row)
+    if not r.get("activo", 1):
+        return False, "Tu cuenta fue desactivada. Contactá al administrador."
+    if not r.get("aprobado", 0):
+        return False, "Tu cuenta está pendiente de aprobación. Te avisamos cuando esté lista."
+    return True, {"id": r["id"], "nombre": r["nombre"], "email": r["email"]}    conn = get_conn()
+    p = ph()
+    if USE_POSTGRES:
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    else:
+        c = conn.cursor()
     c.execute(f"SELECT id, nombre, email FROM usuarios WHERE email={p} AND password={p}", (email.lower().strip(), hash_password(password)))
     row = c.fetchone()
     conn.close()
@@ -115,3 +134,26 @@ def get_stats_usuario(usuario_id):
     ingresos = c.fetchone()[0]
     conn.close()
     return {"pymes": pymes, "gastos": gastos, "ingresos": ingresos}
+def aprobar_usuario(usuario_id):
+    conn = get_conn()
+    p = ph()
+    c = conn.cursor()
+    c.execute(f"UPDATE usuarios SET aprobado=1 WHERE id={p}", (usuario_id,))
+    conn.commit()
+    conn.close()
+
+def desactivar_usuario(usuario_id):
+    conn = get_conn()
+    p = ph()
+    c = conn.cursor()
+    c.execute(f"UPDATE usuarios SET activo=0 WHERE id={p}", (usuario_id,))
+    conn.commit()
+    conn.close()
+
+def activar_usuario(usuario_id):
+    conn = get_conn()
+    p = ph()
+    c = conn.cursor()
+    c.execute(f"UPDATE usuarios SET activo=1 WHERE id={p}", (usuario_id,))
+    conn.commit()
+    conn.close()
