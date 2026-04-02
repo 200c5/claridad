@@ -10,8 +10,7 @@ from db import (
 from auth import (
     init_auth_tables, registrar_usuario, login_usuario,
     get_pymes_usuario, crear_pyme_usuario,
-    get_todos_usuarios, get_stats_usuario,
-    aprobar_usuario, desactivar_usuario, activar_usuario
+    get_todos_usuarios, get_stats_usuario
 )
 
 st.set_page_config(page_title="Claridad", page_icon="💚", layout="wide")
