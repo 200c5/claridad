@@ -208,14 +208,14 @@ ADMIN_EMAIL = "clara2005perdomo@gmail.com"
 es_admin = usuario["email"] == ADMIN_EMAIL
 
 if es_admin:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_admin = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución", "⚙️ Admin"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "📥 Importar Excel", "⚙️ Admin"
     ])
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "📥 Importar Excel"
     ])
     tab_admin = None
 
@@ -571,7 +571,71 @@ with tab6:
         st.plotly_chart(fig)
     else:
         st.info("Cargá datos para ver la evolución.")
+# ══════════════════════════════════════
+# TAB 7 — IMPORTAR EXCEL
+# ══════════════════════════════════════
+with tab7:
+    st.markdown("### 📥 Importar datos desde Excel")
+    st.caption("Subí un reporte exportado de Dynamics u otro sistema y los datos se cargan solos.")
+    st.divider()
 
+    archivo = st.file_uploader("Subí tu archivo Excel", type=["xlsx", "xls"])
+
+    if archivo:
+        import pandas as pd
+        try:
+            df = pd.read_excel(archivo)
+            st.success(f"✅ Archivo cargado — {len(df)} filas, {len(df.columns)} columnas")
+            st.markdown("#### Columnas detectadas")
+            st.write(list(df.columns))
+            st.markdown("#### Vista previa")
+            st.dataframe(df.head(5), hide_index=True)
+            st.divider()
+
+            st.markdown("#### Mapeá las columnas")
+            col_fecha  = st.selectbox("¿Cuál es la columna de FECHA?",   ["-- No usar --"] + list(df.columns))
+            col_monto  = st.selectbox("¿Cuál es la columna de MONTO?",   ["-- No usar --"] + list(df.columns))
+            col_desc   = st.selectbox("¿Cuál es la columna de DESCRIPCIÓN?", ["-- No usar --"] + list(df.columns))
+            col_tipo   = st.selectbox("¿Es ingreso o gasto?", ["gasto", "ingreso"])
+            col_cliente = st.selectbox("¿Cuál es la columna de CLIENTE? (opcional)", ["-- No usar --"] + list(df.columns))
+
+            if st.button("📥 Importar datos", use_container_width=True):
+                if col_fecha == "-- No usar --" or col_monto == "-- No usar --":
+                    st.error("Necesitás seleccionar al menos la columna de fecha y monto.")
+                else:
+                    cats = get_categorias(col_tipo)
+                    cat_id = cats[0]["id"] if cats else 1
+                    errores = 0
+                    importados = 0
+
+                    for _, row in df.iterrows():
+                        try:
+                            fecha  = str(row[col_fecha])[:10]
+                            monto  = float(str(row[col_monto]).replace(",", ".").replace("$", "").strip())
+                            desc   = str(row[col_desc]) if col_desc != "-- No usar --" else "Importado"
+                            cliente = str(row[col_cliente]) if col_cliente != "-- No usar --" else ""
+
+                            if monto <= 0:
+                                continue
+
+                            if col_tipo == "gasto":
+                                registrar_gasto(pyme_id, cat_id, desc, monto, fecha)
+                            else:
+                                registrar_ingreso(pyme_id, cat_id, desc, monto, fecha, cliente)
+                            importados += 1
+                        except:
+                            errores += 1
+
+                    st.success(f"✅ Importados: {importados} registros")
+                    if errores > 0:
+                        st.warning(f"⚠️ {errores} filas no se pudieron importar")
+                    st.cache_data.clear()
+                    st.rerun()
+
+        except Exception as e:
+            st.error(f"Error al leer el archivo: {e}")
+    else:
+        st.info("Subí un archivo Excel exportado de Dynamics, QuickBooks, o cualquier sistema que uses.")
 # ══════════════════════════════════════
 # TAB ADMIN — solo visible para el admin
 # ══════════════════════════════════════
