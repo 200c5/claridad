@@ -20,6 +20,90 @@ from db import init_db
 init_db()
 init_auth_tables()
 
+# CSS personalizado
+st.markdown("""
+<style>
+/* Ocultar barra de Streamlit */
+footer {visibility: hidden;}
+.stDeployButton {display: none;}
+
+/* Fondo general */
+
+/* Botones principales — verde en lugar de rojo */
+.stButton > button {
+    background-color: #1D9E75 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    padding: 10px 20px !important;
+    transition: background-color 0.2s !important;
+}
+.stButton > button:hover {
+    background-color: #0F6E56 !important;
+    color: white !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e8f5f0 !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #f0fdf4 !important;
+    border-radius: 10px !important;
+    padding: 4px !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1D9E75 !important;
+    color: white !important;
+}
+
+/* Métricas */
+[data-testid="metric-container"] {
+    background-color: white !important;
+    border: 1px solid #e8f5f0 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+/* Inputs */
+.stTextInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+.stNumberInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+
+/* Selectbox */
+.stSelectbox > div > div {
+    border-radius: 8px !important;
+    border: 1px solid #d1fae5 !important;
+}
+
+/* Dataframes */
+[data-testid="stDataFrame"] {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    background-color: #f0fdf4 !important;
+    border-radius: 8px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ─────────────────────────────────────
 # SESIÓN
 # ─────────────────────────────────────
@@ -40,7 +124,7 @@ def pantalla_auth():
     col_esp1, col_form, col_esp2 = st.columns([1, 2, 1])
 
     with col_form:
-        modo = st.radio("", ["Iniciar sesión", "Crear cuenta"], horizontal=True, label_visibility="collapsed")
+        modo = st.radio("Modo", ["Iniciar sesión", "Crear cuenta"], horizontal=True, label_visibility="collapsed")
         st.divider()
 
         if modo == "Iniciar sesión":
@@ -208,14 +292,14 @@ ADMIN_EMAIL = "clara2005perdomo@gmail.com"
 es_admin = usuario["email"] == ADMIN_EMAIL
 
 if es_admin:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_admin = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab_admin = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución", "📥 Importar Excel", "⚙️ Admin"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "🏆 Benchmark", "📥 Importar Excel", "⚙️ Admin"
     ])
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📊 Dashboard", "💡 Insights", "🧮 Simulador",
-        "➕ Registrar", "📋 Historial", "📈 Evolución", "📥 Importar Excel"
+        "➕ Registrar", "📋 Historial", "📈 Evolución", "🏆 Benchmark", "📥 Importar Excel"
     ])
     tab_admin = None
 
@@ -495,12 +579,14 @@ with tab4:
         st.markdown("#### 💸 Nuevo gasto")
         cats_g    = get_categorias("gasto")
         nombres_g = [c["nombre"] for c in cats_g]
-        desc_g    = st.text_input("Descripción", key="desc_g", placeholder="Ej: Compra materiales")
-        monto_g   = st.number_input("Monto USD", min_value=0.0, step=1.0, key="monto_g")
-        fecha_g   = st.date_input("Fecha", value=hoy, key="fecha_g")
-        cat_g     = st.selectbox("Categoría", range(len(nombres_g)), format_func=lambda i: nombres_g[i], key="cat_g")
-        fijo_g    = st.checkbox("¿Gasto fijo?", key="fijo_g")
-        if st.button("✅ Guardar gasto", use_container_width=True):
+        with st.form("form_gasto", clear_on_submit=True):
+            desc_g    = st.text_input("Descripción *", placeholder="Ej: Compra materiales")
+            monto_g   = st.number_input("Monto USD *", min_value=0.0, step=1.0)
+            fecha_g   = st.date_input("Fecha", value=hoy)
+            cat_g     = st.selectbox("Categoría", range(len(nombres_g)), format_func=lambda i: nombres_g[i])
+            fijo_g    = st.checkbox("¿Gasto fijo?")
+            submitted_g = st.form_submit_button("✅ Guardar gasto", use_container_width=True)
+        if submitted_g:
             if desc_g and monto_g > 0:
                 registrar_gasto(pyme_id, cats_g[cat_g]["id"], desc_g, monto_g, fecha_g.isoformat(), fijo_g)
                 st.success(f"✅ Guardado: {desc_g} — USD {monto_g:,.0f}")
@@ -513,12 +599,14 @@ with tab4:
         st.markdown("#### 💰 Nuevo ingreso")
         cats_i    = get_categorias("ingreso")
         nombres_i = [c["nombre"] for c in cats_i]
-        desc_i    = st.text_input("Descripción", key="desc_i", placeholder="Ej: Venta del día")
-        monto_i   = st.number_input("Monto USD", min_value=0.0, step=1.0, key="monto_i")
-        fecha_i   = st.date_input("Fecha", value=hoy, key="fecha_i")
-        cliente_i = st.text_input("Cliente (importante para análisis)", key="cliente_i")
-        cat_i     = st.selectbox("Categoría", range(len(nombres_i)), format_func=lambda i: nombres_i[i], key="cat_i")
-        if st.button("✅ Guardar ingreso", use_container_width=True):
+        with st.form("form_ingreso", clear_on_submit=True):
+            desc_i    = st.text_input("Descripción *", placeholder="Ej: Venta del día")
+            monto_i   = st.number_input("Monto USD *", min_value=0.0, step=1.0)
+            fecha_i   = st.date_input("Fecha", value=hoy)
+            cliente_i = st.text_input("Cliente (importante para análisis)")
+            cat_i     = st.selectbox("Categoría", range(len(nombres_i)), format_func=lambda i: nombres_i[i])
+            submitted_i = st.form_submit_button("✅ Guardar ingreso", use_container_width=True)
+        if submitted_i:
             if desc_i and monto_i > 0:
                 registrar_ingreso(pyme_id, cats_i[cat_i]["id"], desc_i, monto_i, fecha_i.isoformat(), cliente_i)
                 st.success(f"✅ Guardado: {desc_i} — USD {monto_i:,.0f}")
@@ -571,10 +659,100 @@ with tab6:
         st.plotly_chart(fig)
     else:
         st.info("Cargá datos para ver la evolución.")
+
 # ══════════════════════════════════════
-# TAB 7 — IMPORTAR EXCEL
+# TAB 7 — BENCHMARK DEL SECTOR
 # ══════════════════════════════════════
 with tab7:
+    st.markdown("### 🏆 Tu negocio vs el sector")
+    st.caption("Compará tu margen con el promedio de negocios similares en la región.")
+    st.divider()
+
+    rubros = get_rubros_disponibles()
+    rubro_sel = st.selectbox(
+        "¿Cuál es el rubro de tu negocio?",
+        rubros,
+        index=rubros.index("Otros") if "Otros" in rubros else 0
+    )
+
+    if resumen["total_ingresos"] > 0:
+        analisis = analizar_vs_sector(resumen["margen_pct"], rubro_sel)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Tu margen actual", f"{analisis['margen_actual']}%")
+        with col2:
+            st.metric("Promedio del sector", f"{analisis['margen_promedio']}%")
+        with col3:
+            diferencia = analisis["diferencia"]
+            st.metric(
+                "Diferencia",
+                f"{abs(diferencia):.1f} pts",
+                delta=f"{'por encima' if diferencia >= 0 else 'por debajo'}",
+                delta_color="normal" if diferencia >= 0 else "inverse"
+            )
+
+        st.divider()
+
+        # Mensaje principal
+        if analisis["color"] == "success":
+            st.success(f"{analisis['emoji']} **{analisis['comparacion']}**")
+        elif analisis["color"] == "warning":
+            st.warning(f"{analisis['emoji']} **{analisis['comparacion']}**")
+        else:
+            st.error(f"{analisis['emoji']} **{analisis['comparacion']}**")
+
+        st.info(f"💡 {analisis['mensaje']}")
+
+        st.divider()
+
+        # Gráfico de barras comparativo
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_bar(
+            x=["Tu negocio", "Mínimo sector", "Promedio sector", "Margen ideal"],
+            y=[analisis["margen_actual"], analisis["margen_minimo"],
+               analisis["margen_promedio"], analisis["margen_bueno"]],
+            marker_color=["#1D9E75" if analisis["margen_actual"] >= analisis["margen_promedio"] else "#E24B4A",
+                         "#CCCCCC", "#7F77DD", "#1D9E75"],
+            text=[f"{v:.1f}%" for v in [analisis["margen_actual"], analisis["margen_minimo"],
+                                         analisis["margen_promedio"], analisis["margen_bueno"]]],
+            textposition="outside"
+        )
+        fig.update_layout(
+            title=f"Comparación de margen neto — {rubro_sel}",
+            height=350, showlegend=False,
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(title="Margen neto (%)", ticksuffix="%"),
+            margin=dict(t=40, b=20)
+        )
+        st.plotly_chart(fig)
+
+        # Tabla con todos los rubros
+        st.divider()
+        st.markdown("#### Márgenes promedio por sector")
+        bench_data = []
+        for rubro_key, datos in BENCHMARKS.items():
+            bench_data.append({
+                "Sector": rubro_key,
+                "Mínimo": f"{datos['margen_neto_min']}%",
+                "Promedio": f"{datos['margen_neto_promedio']}%",
+                "Bueno": f"{datos['margen_neto_bueno']}%+",
+                "Descripción": datos["descripcion"]
+            })
+        import pandas as pd
+        df_bench = pd.DataFrame(bench_data)
+        st.dataframe(df_bench, hide_index=True)
+        st.caption(f"Fuente: {analisis['fuente']}")
+
+    else:
+        st.info("Cargá datos de ingresos y gastos para ver tu benchmark del sector.")
+
+# ══════════════════════════════════════
+# ══════════════════════════════════════
+# TAB 8 — IMPORTAR EXCEL
+# ══════════════════════════════════════
+with tab8:
     st.markdown("### 📥 Importar datos desde Excel")
     st.caption("Subí un reporte exportado de Dynamics u otro sistema y los datos se cargan solos.")
     st.divider()
@@ -582,51 +760,53 @@ with tab7:
     archivo = st.file_uploader("Subí tu archivo Excel", type=["xlsx", "xls"])
 
     if archivo:
-        import pandas as pd
         try:
-            df = pd.read_excel(archivo)
-            st.success(f"✅ Archivo cargado — {len(df)} filas, {len(df.columns)} columnas")
+            df_excel = pd.read_excel(archivo)
+            st.success(f"✅ Archivo cargado — {len(df_excel)} filas, {len(df_excel.columns)} columnas")
             st.markdown("#### Columnas detectadas")
-            st.write(list(df.columns))
+            st.write(list(df_excel.columns))
             st.markdown("#### Vista previa")
-            st.dataframe(df.head(5), hide_index=True)
+            st.dataframe(df_excel.head(5), hide_index=True)
             st.divider()
 
             st.markdown("#### Mapeá las columnas")
-            col_fecha  = st.selectbox("¿Cuál es la columna de FECHA?",   ["-- No usar --"] + list(df.columns))
-            col_monto  = st.selectbox("¿Cuál es la columna de MONTO?",   ["-- No usar --"] + list(df.columns))
-            col_desc   = st.selectbox("¿Cuál es la columna de DESCRIPCIÓN?", ["-- No usar --"] + list(df.columns))
-            col_tipo   = st.selectbox("¿Es ingreso o gasto?", ["gasto", "ingreso"])
-            col_cliente = st.selectbox("¿Cuál es la columna de CLIENTE? (opcional)", ["-- No usar --"] + list(df.columns))
+            opciones = ["-- No usar --"] + list(df_excel.columns)
+            col_fecha   = st.selectbox("¿Cuál es la columna de FECHA?",        opciones, key="imp_fecha")
+            col_monto   = st.selectbox("¿Cuál es la columna de MONTO?",        opciones, key="imp_monto")
+            col_desc    = st.selectbox("¿Cuál es la columna de DESCRIPCIÓN?",  opciones, key="imp_desc")
+            col_tipo    = st.selectbox("¿Es ingreso o gasto?", ["gasto", "ingreso"], key="imp_tipo")
+            col_cliente = st.selectbox("¿Cuál es la columna de CLIENTE? (opcional)", opciones, key="imp_cliente")
 
             if st.button("📥 Importar datos", use_container_width=True):
                 if col_fecha == "-- No usar --" or col_monto == "-- No usar --":
                     st.error("Necesitás seleccionar al menos la columna de fecha y monto.")
                 else:
-                    cats = get_categorias(col_tipo)
+                    cats   = get_categorias(col_tipo)
                     cat_id = cats[0]["id"] if cats else 1
-                    errores = 0
+                    errores   = 0
                     importados = 0
 
-for _, row in df.iterrows():
+                    for _, row in df_excel.iterrows():
                         try:
-                            from datetime import datetime
                             fecha_raw = row[col_fecha]
                             if hasattr(fecha_raw, 'strftime'):
                                 fecha = fecha_raw.strftime('%Y-%m-%d')
                             else:
                                 fecha = str(fecha_raw)[:10]
-                            monto  = float(str(row[col_monto]).replace(",", ".").replace("$", "").strip())
-                            desc   = str(row[col_desc]) if col_desc != "-- No usar --" else "Importado"
+
+                            monto   = float(str(row[col_monto]).replace(",", ".").replace("$", "").strip())
+                            desc    = str(row[col_desc]) if col_desc != "-- No usar --" else "Importado"
                             cliente = str(row[col_cliente]) if col_cliente != "-- No usar --" else ""
+
                             if monto <= 0:
                                 continue
+
                             if col_tipo == "gasto":
                                 registrar_gasto(pyme_id, cat_id, desc, monto, fecha)
                             else:
                                 registrar_ingreso(pyme_id, cat_id, desc, monto, fecha, cliente)
                             importados += 1
-                        except:
+                        except Exception:
                             errores += 1
 
                     st.success(f"✅ Importados: {importados} registros")
@@ -639,6 +819,7 @@ for _, row in df.iterrows():
             st.error(f"Error al leer el archivo: {e}")
     else:
         st.info("Subí un archivo Excel exportado de Dynamics, QuickBooks, o cualquier sistema que uses.")
+
 # ══════════════════════════════════════
 # TAB ADMIN — solo visible para el admin
 # ══════════════════════════════════════
