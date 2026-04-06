@@ -610,7 +610,15 @@ with tab7:
 
                     for _, row in df.iterrows():
                         try:
-                            fecha  = str(row[col_fecha])[:10]
+                            try:
+    from datetime import datetime
+    fecha_raw = row[col_fecha]
+    if hasattr(fecha_raw, 'strftime'):
+        fecha = fecha_raw.strftime('%Y-%m-%d')
+    else:
+        fecha = str(fecha_raw)[:10]
+except:
+    fecha = str(row[col_fecha])[:10]
                             monto  = float(str(row[col_monto]).replace(",", ".").replace("$", "").strip())
                             desc   = str(row[col_desc]) if col_desc != "-- No usar --" else "Importado"
                             cliente = str(row[col_cliente]) if col_cliente != "-- No usar --" else ""
