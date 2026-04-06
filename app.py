@@ -609,15 +609,15 @@ with tab7:
                     importados = 0
 
                     for _, row in df.iterrows():
-                        try:
-                            try:
-                    from datetime import datetime
-                    fecha_raw = row[col_fecha]
-                    if hasattr(fecha_raw, 'strftime'):
-                        fecha = fecha_raw.strftime('%Y-%m-%d')
-                    else:
-                        fecha = str(fecha_raw)[:10]
-                except:
+                       try:
+                        from datetime import datetime
+                        fecha_raw = row[col_fecha]
+                        if hasattr(fecha_raw, 'strftime'):
+                            fecha = fecha_raw.strftime('%Y-%m-%d')
+                        else:
+                            fecha = str(fecha_raw)[:10]
+                    except:
+                        fecha = str(row[col_fecha])[:10]
                     fecha = str(row[col_fecha])[:10]
     fecha_raw = row[col_fecha]
     if hasattr(fecha_raw, 'strftime'):
